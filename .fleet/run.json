@@ -6,6 +6,13 @@
             "type": "cargo",
             "workingDir": "$PROJECT_DIR$",
             "cargoArgs": ["run", "--release", "--package", "cult-of-the-bound-var", "--bin", "cult-of-the-bound-var"]
+        },
+        {
+            "name": "test bench release",
+            "type": "cargo",
+            "workingDir": "$PROJECT_DIR$",
+            "cargoArgs": ["test", "--release", "--package", "cult-of-the-bound-var", "--bin", "cult-of-the-bound-var"],
+            "executableArgs": ["bench", "--exact", "--nocapture"]
         }
     ]
 }

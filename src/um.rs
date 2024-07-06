@@ -2,6 +2,8 @@
 
 use std::{collections::HashMap, ops::{Index, IndexMut, Div, BitAnd, Not}, usize};
 
+use rustc_hash::FxHashMap;
+
 
 pub type Plate = u32;
 
@@ -13,7 +15,8 @@ pub trait IOInterface {
 pub struct UniversalMachine<'a> {
     pub registers: Registers,
     pub ip: usize,
-    pub arrays: HashMap<Plate, Vec<Plate>>,
+    pub next_array_id: Plate,
+    pub arrays: FxHashMap<Plate, Vec<Plate>>,
     pub is_halted: bool,
     pub io: &'a mut dyn IOInterface,
 }
@@ -49,19 +52,21 @@ impl <'a> UniversalMachine<'a> {
             .map(UniversalMachine::plate_from_bytes)
             .collect::<Option<Vec<Plate>>>()?;
         let registers = Registers::default();
-        let arrays = HashMap::from([(0, program_array)]);
+        let mut arrays = FxHashMap::default();
+        arrays.insert(0, program_array);
         Some(UniversalMachine {
             registers,
             ip: 0,
+            next_array_id: 1,
             arrays,
             io,
             is_halted: false,
         })
     }
     
-    pub fn run(&mut self) {
+    pub fn run(&mut self, max_steps: Option<u32>) {
         let mut step = 0;
-        let max_steps = u32::max_value(); 
+        let max_steps = max_steps.unwrap_or(u32::max_value());
         while !self.is_halted && step < max_steps {
             let command = Command::decode(self.arrays[&0][self.ip]);
 //            eprintln!("{:?}", command);
@@ -90,6 +95,9 @@ impl <'a> UniversalMachine<'a> {
             },
             Command::ArrStore { src, arr, offset } => {
                 let arr = self.registers[arr];
+//                if arr == 0 {
+//                    eprintln!("Modifying program: {:?}", command);
+//                }
                 let offset = self.registers[offset] as usize;
                 self.arrays.get_mut(&arr).unwrap()[offset] = self.registers[src];
             },
@@ -117,7 +125,8 @@ impl <'a> UniversalMachine<'a> {
                 self.is_halted = true;
             },
             Command::Alloc { dst, size } => {
-                let next_id = self.arrays.keys().max().unwrap() + 1;
+                let next_id = self.next_array_id;
+                self.next_array_id += 1;
                 let size = self.registers[size] as usize;
                 self.arrays.insert(next_id, vec![0; size]);
                 self.registers[dst] = next_id;
