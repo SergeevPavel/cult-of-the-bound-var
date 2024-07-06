@@ -1,0 +1,11 @@
+{
+    "configurations": [
+        
+        {
+            "name": "run cult-of-the-bound-var release",
+            "type": "cargo",
+            "workingDir": "$PROJECT_DIR$",
+            "cargoArgs": ["run", "--release", "--package", "cult-of-the-bound-var", "--bin", "cult-of-the-bound-var"]
+        }
+    ]
+}
