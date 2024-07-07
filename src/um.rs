@@ -94,9 +94,6 @@ impl <'a> UniversalMachine<'a> {
             },
             Command::ArrStore { src, arr, offset } => {
                 let arr = self.registers[arr];
-//                if arr == 0 {
-//                    eprintln!("Modifying program: {:?}", command);
-//                }
                 let offset = self.registers[offset] as usize;
                 let v = self.arrays.get_mut(&arr).unwrap();
                 match Rc::get_mut(v) {
