@@ -4,7 +4,7 @@
 use std::{
     collections::VecDeque,
     fs::File,
-    io::{stdin, stdout, Read, Write}, time::Instant,
+    io::{stdin, stdout, Read, Write},
 };
 
 use um::{IOInterface, UniversalMachine};
@@ -58,13 +58,13 @@ impl IOInterface for UMIO {
 fn run_codex() {
     let mut io = UMIO::new(r"(\b.bb)(\v.vv)06FHPVboundvarHRAk");
     let mut um = UniversalMachine::new(&codex(), &mut io).unwrap();
-    um.run(None);
+    um.run();
 }
 
 fn run_sandmark() {
     let mut io = UMIO::new(r"");
     let mut um = UniversalMachine::new(&sandmark(), &mut io).unwrap();
-    um.run(None);
+    um.run();
 }
 
 fn main() {
@@ -76,6 +76,6 @@ fn bench() {
     let t = Instant::now();
     let mut io = UMIO::new(r"");
     let mut um = UniversalMachine::new(&sandmark(), &mut io).unwrap();
-    um.run(None);
+    um.run();
     eprintln!("Elapsed: {:?}", t.elapsed());
 }

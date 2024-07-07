@@ -58,12 +58,11 @@ impl <'a> UniversalMachine<'a> {
         })
     }
     
-    pub fn run(&mut self, max_steps: Option<u32>) {
-        let mut step = 0;
-        let max_steps = max_steps.unwrap_or(u32::max_value());
-        while !self.is_halted && step < max_steps {
+    pub fn run(&mut self) {
+        let mut _step = 0;
+        while !self.is_halted {
             let command = Command::decode(self.arrays[0].as_ref().unwrap()[self.ip]);
-            step += 1;
+            _step += 1;
             self.perform_command(&command);
             match &command {
                 Command::LoadProg { .. } => {},
