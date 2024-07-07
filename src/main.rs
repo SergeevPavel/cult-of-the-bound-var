@@ -38,7 +38,6 @@ impl UMIO {
 
 impl IOInterface for UMIO {
     fn request_input(&mut self) -> u8 {
-        eprintln!("Request input!");
         match self.input_buffer.pop_front() {
             Some(c) => c,
             None => {
@@ -68,7 +67,7 @@ fn run_sandmark() {
 }
 
 fn main() {
-    run_sandmark();
+    run_codex();
 }
 
 #[test]
@@ -76,6 +75,6 @@ fn bench() {
     let t = Instant::now();
     let mut io = UMIO::new(r"");
     let mut um = UniversalMachine::new(&sandmark(), &mut io).unwrap();
-    um.run(Some(100_000_000));
+    um.run(None);
     eprintln!("Elapsed: {:?}", t.elapsed());
 }

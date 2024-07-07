@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{collections::HashMap, ops::{Index, IndexMut, Div, BitAnd, Not}, usize};
+use std::{ops::{Index, IndexMut, Div, BitAnd, Not}, usize, rc::Rc};
 
 use rustc_hash::FxHashMap;
 
@@ -16,7 +16,7 @@ pub struct UniversalMachine<'a> {
     pub registers: Registers,
     pub ip: usize,
     pub next_array_id: Plate,
-    pub arrays: FxHashMap<Plate, Vec<Plate>>,
+    pub arrays: FxHashMap<Plate, Rc<[Plate]>>,
     pub is_halted: bool,
     pub io: &'a mut dyn IOInterface,
 }
@@ -53,7 +53,7 @@ impl <'a> UniversalMachine<'a> {
             .collect::<Option<Vec<Plate>>>()?;
         let registers = Registers::default();
         let mut arrays = FxHashMap::default();
-        arrays.insert(0, program_array);
+        arrays.insert(0, program_array.into());
         Some(UniversalMachine {
             registers,
             ip: 0,
@@ -69,7 +69,6 @@ impl <'a> UniversalMachine<'a> {
         let max_steps = max_steps.unwrap_or(u32::max_value());
         while !self.is_halted && step < max_steps {
             let command = Command::decode(self.arrays[&0][self.ip]);
-//            eprintln!("{:?}", command);
             step += 1;
             self.perform_command(&command);
             match &command {
@@ -99,7 +98,17 @@ impl <'a> UniversalMachine<'a> {
 //                    eprintln!("Modifying program: {:?}", command);
 //                }
                 let offset = self.registers[offset] as usize;
-                self.arrays.get_mut(&arr).unwrap()[offset] = self.registers[src];
+                let v = self.arrays.get_mut(&arr).unwrap();
+                match Rc::get_mut(v) {
+                    Some(vm) => {
+                        vm[offset] = self.registers[src];
+                    },
+                    None => {
+                        let mut new_v = v.to_vec();
+                        new_v[offset] = self.registers[src];
+                        *v = new_v.into();
+                    },
+                }
             },
             Command::Add { dst, op1, op2 } => {
                 let op1 = self.registers[op1];
@@ -128,7 +137,7 @@ impl <'a> UniversalMachine<'a> {
                 let next_id = self.next_array_id;
                 self.next_array_id += 1;
                 let size = self.registers[size] as usize;
-                self.arrays.insert(next_id, vec![0; size]);
+                self.arrays.insert(next_id, vec![0; size].into());
                 self.registers[dst] = next_id;
             },
             Command::Free { arr } => {
