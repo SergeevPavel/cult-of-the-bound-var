@@ -2,9 +2,6 @@
 
 use std::{ops::{Index, IndexMut, Div, BitAnd, Not}, usize, rc::Rc};
 
-use rustc_hash::FxHashMap;
-
-
 pub type Plate = u32;
 
 pub trait IOInterface {
@@ -15,8 +12,7 @@ pub trait IOInterface {
 pub struct UniversalMachine<'a> {
     pub registers: Registers,
     pub ip: usize,
-    pub next_array_id: Plate,
-    pub arrays: FxHashMap<Plate, Rc<[Plate]>>,
+    pub arrays: Vec<Option<Rc<[Plate]>>>,
     pub is_halted: bool,
     pub io: &'a mut dyn IOInterface,
 }
@@ -52,12 +48,10 @@ impl <'a> UniversalMachine<'a> {
             .map(UniversalMachine::plate_from_bytes)
             .collect::<Option<Vec<Plate>>>()?;
         let registers = Registers::default();
-        let mut arrays = FxHashMap::default();
-        arrays.insert(0, program_array.into());
+        let arrays = vec![Some(program_array.into())];
         Some(UniversalMachine {
             registers,
             ip: 0,
-            next_array_id: 1,
             arrays,
             io,
             is_halted: false,
@@ -68,7 +62,7 @@ impl <'a> UniversalMachine<'a> {
         let mut step = 0;
         let max_steps = max_steps.unwrap_or(u32::max_value());
         while !self.is_halted && step < max_steps {
-            let command = Command::decode(self.arrays[&0][self.ip]);
+            let command = Command::decode(self.arrays[0].as_ref().unwrap()[self.ip]);
             step += 1;
             self.perform_command(&command);
             match &command {
@@ -88,14 +82,14 @@ impl <'a> UniversalMachine<'a> {
                 }
             },
             Command::ArrLoad { dst, arr, offset } => {
-                let arr = self.registers[arr];
+                let arr = self.registers[arr] as usize;
                 let offset = self.registers[offset] as usize;
-                self.registers[dst] = self.arrays[&arr][offset];
+                self.registers[dst] = self.arrays[arr].as_ref().unwrap()[offset];
             },
             Command::ArrStore { src, arr, offset } => {
-                let arr = self.registers[arr];
+                let arr = self.registers[arr] as usize;
                 let offset = self.registers[offset] as usize;
-                let v = self.arrays.get_mut(&arr).unwrap();
+                let v = self.arrays[arr].as_mut().unwrap();
                 match Rc::get_mut(v) {
                     Some(vm) => {
                         vm[offset] = self.registers[src];
@@ -131,15 +125,15 @@ impl <'a> UniversalMachine<'a> {
                 self.is_halted = true;
             },
             Command::Alloc { dst, size } => {
-                let next_id = self.next_array_id;
-                self.next_array_id += 1;
                 let size = self.registers[size] as usize;
-                self.arrays.insert(next_id, vec![0; size].into());
+                let next_id = self.arrays.len() as u32;
+                // Unnecessary copy here ↓
+                self.arrays.push(Some(vec![0; size].into()));
                 self.registers[dst] = next_id;
             },
             Command::Free { arr } => {
-                let arr = self.registers[arr];
-                self.arrays.remove(&arr);
+                let arr = self.registers[arr] as usize;
+                self.arrays[arr] = None;
             },
             Command::Output { src } => {
                 let src = self.registers[src];
@@ -149,9 +143,9 @@ impl <'a> UniversalMachine<'a> {
                 self.registers[dst] = self.io.request_input() as Plate;
             },
             Command::LoadProg { arr, offset } => {
-                let arr = self.registers[arr];
+                let arr = self.registers[arr] as usize;
                 let offset = self.registers[offset] as usize;
-                self.arrays.insert(0, self.arrays[&arr].clone());
+                self.arrays[0] = self.arrays[arr].clone();
                 self.ip = offset;
             },
             Command::StoreConst { dst, val } => {
