@@ -90,16 +90,7 @@ impl <'a> UniversalMachine<'a> {
                 let arr = self.registers[arr] as usize;
                 let offset = self.registers[offset] as usize;
                 let v = self.arrays[arr].as_mut().unwrap();
-                match Rc::get_mut(v) {
-                    Some(vm) => {
-                        vm[offset] = self.registers[src];
-                    },
-                    None => {
-                        let mut new_v = v.to_vec();
-                        new_v[offset] = self.registers[src];
-                        *v = new_v.into();
-                    },
-                }
+                Rc::make_mut(v)[offset] = self.registers[src];
             },
             Command::Add { dst, op1, op2 } => {
                 let op1 = self.registers[op1];
@@ -127,8 +118,10 @@ impl <'a> UniversalMachine<'a> {
             Command::Alloc { dst, size } => {
                 let size = self.registers[size] as usize;
                 let next_id = self.arrays.len() as u32;
-                // Unnecessary copy here ↓
-                self.arrays.push(Some(vec![0; size].into()));
+                let s = Rc::<[Plate]>::new_zeroed_slice(size);
+                self.arrays.push(Some(unsafe {
+                    s.assume_init()
+                }));
                 self.registers[dst] = next_id;
             },
             Command::Free { arr } => {
